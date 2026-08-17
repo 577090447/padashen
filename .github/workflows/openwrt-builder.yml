@@ -4,7 +4,7 @@
 # 触发方式：手动触发 / API 触发
 #
 
-name: OpenWrt Builder
+name: re-ss-01 Builder
 
 on:
   repository_dispatch:
