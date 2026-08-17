@@ -17,10 +17,10 @@ on:
   workflow_dispatch:
 
 env:
-  REPO_URL: https://github.com/guangyin53222/immortalwrt-mt798x-rebase
-  REPO_BRANCH: 25.12
+  REPO_URL: https://github.com/LiBwrt/LibWrt
+  REPO_BRANCH: 25.12-nss
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: xr30-emmc.config
+  CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
