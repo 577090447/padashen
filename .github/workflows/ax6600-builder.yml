@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
 
 env:
-  REPO_URL: https://github.com/VIKINGYFY/immortalwrt
-  REPO_BRANCH: main
+  REPO_URL: https://github.com/LiBwrt/LibWrt
+  REPO_BRANCH: 25.12-nss
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: ax6600.config
   DIY_P1_SH: diyax6600-part1.sh
