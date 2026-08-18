@@ -1,0 +1,14 @@
+
+config zerotier 'global'
+	option fw_allow_input '1'
+	option local_conf_path '/etc/zerotier.conf'
+	option config_path '/etc/zerotier'
+	option secret '8a4de0a307:0:1e50cbdd1752af9e405f5863879e7d124503967e4b46d3fe1298b2c2631330407e1b48c306a6eab6a4eadf4a8710dbfe62166adbd604769aec397c4803f28241:bc8452fe10cb569545ca903e08dd6e81878bcbd8798853566a71a9359c2cc665cd431a911b0438e42d88eac528c740ea67907e1692d2bc74d689a91d4a19339e'
+	option enabled '1'
+
+config network 'ax6600'
+	option id 'bb720a5aaea3a04b'
+	option fw_allow_input '1'
+	option fw_allow_forward '1'
+	option fw_allow_masq '1'
+
