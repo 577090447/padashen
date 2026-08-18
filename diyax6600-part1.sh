@@ -55,7 +55,9 @@ git clone --depth=1 https://github.com/linkease/istore.git package/luci-app-stor
 
 rm -rf package/luci-app-gecoosac
 git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac package/luci-app-gecoosac
-
+# Harbor File
+rm -rf package/luci-app-harbor-file
+git clone --depth=1 https://github.com/destan19/luci-app-harbor-file package/luci-app-harbor-file
 
 # 更新并安装插件源
 ./scripts/feeds update -a
