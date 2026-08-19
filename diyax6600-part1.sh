@@ -20,6 +20,9 @@
 # Add a feed source
 #echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
 #echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# ===================== Athena LED 清理 feeds 旧版（避免和本地 package/ 冲突） =====================
+rm -rf package/feeds/luci/luci-app-athena-led
+rm -rf package/feeds/packages/athena-led
 # ===================== 第三方插件统一拉取（先删旧残留） =====================
 
 rm -rf package/OpenAppFilter
