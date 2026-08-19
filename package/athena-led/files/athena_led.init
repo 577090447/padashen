@@ -1,0 +1,223 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=99
+USE_PROCD=1
+PROG=/usr/bin/athena-led
+
+check_binary() {
+	[ -x "$PROG" ] || return 1
+}
+
+# 🌟 全局变量定义（绝对不能用 local）
+single_str=""
+chan_1=""
+chan_2=""
+chan_3=""
+chan_4=""
+chan_5=""
+chan_6=""
+chan_7=""
+chan_8=""
+
+parse_single() {
+	local cfg="$1"
+	local module duration param
+	config_get module "$cfg" 'module' ''
+	config_get duration "$cfg" 'duration' '5'
+	config_get param "$cfg" 'param' ''
+
+	[ -z "$module" ] && return
+
+	local str="${module}"
+	[ -n "$param" ] && str="${str}:${param}"
+	str="${str}#${duration}"
+
+	single_str="${single_str}${single_str:+ }${str}"
+}
+
+parse_multi() {
+	local cfg="$1"
+	local channel module duration param
+	config_get channel "$cfg" 'channel' '1'
+	config_get module "$cfg" 'module' ''
+	config_get duration "$cfg" 'duration' '5'
+	config_get param "$cfg" 'param' ''
+
+	[ -z "$module" ] && return
+
+	local str="${module}"
+	[ -n "$param" ] && str="${str}:${param}"
+	str="${str}#${duration}"
+
+	eval "chan_${channel}=\${chan_${channel}}\${chan_${channel}:+ }\${str}"
+}
+
+start_service() {
+	config_load 'athena_led'
+	local cfg='general'
+
+	local enabled
+	config_get_bool enabled "$cfg" 'enabled' '0'
+	[ "$enabled" -eq 0 ] && return 1
+
+	check_binary || return 1
+
+	# 🌟 每次启动或重载前，必须清空全局变量
+	single_str=""
+	chan_1="" ; chan_2="" ; chan_3="" ; chan_4=""
+	chan_5="" ; chan_6="" ; chan_7="" ; chan_8=""
+
+	local profileMode
+	config_get profileMode "$cfg" 'profile_mode' 'multi'
+
+	# 读取所有基础配置
+	local lightLevel netInterface ipUrl customText url httpLength httpCacheSecs
+	local weatherCity weatherSource weatherFormat seniverseKey tempFlag stockUrl
+	local enableSleep sleepStart sleepEnd
+	local disableLedClock disableLedMedal disableLedUp disableLedDown
+	local buttonGpio gpioBase gpioBackend
+
+	config_get lightLevel "$cfg" 'light_level' '5'
+	config_get netInterface "$cfg" 'net_interface' 'br-lan'
+	config_get ipUrl "$cfg" 'wan_ip_custom_url' 'http://checkip.amazonaws.com'
+	config_get customText "$cfg" 'custom_content' 'AX6600 LED'
+	config_get url "$cfg" 'http_url' ''
+	config_get httpLength "$cfg" 'http_length' '15'
+	config_get httpCacheSecs "$cfg" 'http_cache_secs' '60'
+	config_get weatherCity "$cfg" 'weather_city' 'auto'
+	config_get weatherSource "$cfg" 'weather_source' 'uapis'
+	config_get weatherFormat "$cfg" 'weather_format' 'simple'
+	config_get seniverseKey "$cfg" 'seniverse_key' ''
+	config_get tempFlag "$cfg" 'temp_sensors' '0 1 2 3 4'
+	config_get stockUrl "$cfg" 'stock_url' ''
+	config_get enableSleep "$cfg" 'enable_sleep' '0'
+	config_get sleepStart "$cfg" 'off_time' '23:00'
+	config_get sleepEnd "$cfg" 'on_time' '07:00'
+	config_get disableLedClock "$cfg" 'disable_led_clock' '0'
+	config_get disableLedMedal "$cfg" 'disable_led_medal' '0'
+	config_get disableLedUp "$cfg" 'disable_led_up' '0'
+	config_get disableLedDown "$cfg" 'disable_led_down' '0'
+	config_get buttonGpio "$cfg" 'button_gpio' '71'
+	config_get gpioBase "$cfg" 'gpio_base' 'auto'
+	config_get gpioBackend "$cfg" 'gpio_backend' 'auto'
+
+	# 读取告警配置
+	local tempAlert tempAlertSensor alertWan alertNewdev alertIp
+	config_get tempAlert "$cfg" 'temp_alert' '0'
+	config_get tempAlertSensor "$cfg" 'temp_alert_sensor' '4'
+	config_get alertWan "$cfg" 'alert_wan' '0'
+	config_get alertNewdev "$cfg" 'alert_newdev' '0'
+	config_get alertIp "$cfg" 'alert_ip' '0'
+
+	# 读取 MQTT / 控制端口
+	local mqttBroker mqttTopic mqttUser mqttPass controlPort
+	config_get mqttBroker "$cfg" 'mqtt_broker' ''
+	config_get mqttTopic "$cfg" 'mqtt_topic' 'athena-led/display'
+	config_get mqttUser "$cfg" 'mqtt_user' ''
+	config_get mqttPass "$cfg" 'mqtt_pass' ''
+	config_get controlPort "$cfg" 'control_port' '0'
+
+	# 解析模块配置
+	if [ "$profileMode" = "single" ]; then
+		config_foreach parse_single single_module
+	else
+		config_foreach parse_multi multi_module
+	fi
+
+	procd_open_instance
+	procd_set_param command "$PROG"
+
+	# 基础参数
+	procd_append_param command --light-level "$lightLevel"
+	procd_append_param command --net-interface "$netInterface"
+	procd_append_param command --custom-text "$customText"
+
+	# GPIO 配置
+	[ "$gpioBackend" != "auto" ] && procd_append_param command --gpio-backend "$gpioBackend"
+	[ "$gpioBase" != "auto" ] && procd_append_param command --gpio-base "$gpioBase"
+	[ -n "$buttonGpio" ] && procd_append_param command --button-gpio "$buttonGpio"
+
+	# 网络 IP
+	[ -n "$ipUrl" ] && procd_append_param command --wan-ip-url "$ipUrl"
+
+	# HTTP 自定义内容
+	[ -n "$url" ] && procd_append_param command --custom-http-url "$url"
+	[ -n "$httpLength" ] && procd_append_param command --http-length "$httpLength"
+	[ -n "$httpCacheSecs" ] && procd_append_param command --http-cache-secs "$httpCacheSecs"
+
+	# 天气
+	[ "$weatherCity" != "auto" ] && [ -n "$weatherCity" ] && procd_append_param command --weather-city "$weatherCity"
+	[ -n "$weatherSource" ] ] && procd_append_param command --weather-source "$weatherSource"
+	[ -n "$weatherFormat" ] && procd_append_param command --weather-format "$weatherFormat"
+	[ -n "$seniverseKey" ] && procd_append_param command --seniverse-key "$seniverseKey"
+
+	# 温度
+	[ -n "$tempFlag" ] && procd_append_param command --temp-sensors $tempFlag
+
+	# 股票
+	[ -n "$stockUrl" ] && procd_append_param command --stock-url "$stockUrl"
+
+	# 睡眠模式
+	[ "$enableSleep" -eq 1 ] && {
+		procd_append_param command --sleep-start "$sleepStart"
+		procd_append_param command --sleep-end "$sleepEnd"
+	}
+
+	# 夜间亮度
+	local nightEnable nightStart nightEnd nightLevel
+	config_get nightEnable "$cfg" 'night_light_enable' '0'
+	config_get nightStart "$cfg" 'night_start' '22:00'
+	config_get nightEnd "$cfg" 'night_end' '07:00'
+	config_get nightLevel "$cfg" 'night_light_level' '1'
+	[ "$nightEnable" -eq 1 ] && {
+		procd_append_param command --night-start "$nightStart"
+		procd_append_param command --night-end "$nightEnd"
+		procd_append_param command --night-level "$nightLevel"
+	}
+
+	# 显示内容
+	if [ "$profileMode" = "single" ]; then
+		[ -n "$single_str" ] && procd_append_param command --display-order "$single_str"
+	else
+		[ -n "$chan_1" ] && procd_append_param command --channel-1 "$chan_1"
+		[ -n "$chan_2" ] && procd_append_param command --channel-2 "$chan_2"
+		[ -n "$chan_3" ] && procd_append_param command --channel-3 "$chan_3"
+		[ -n "$chan_4" ] && procd_append_param command --channel-4 "$chan_4"
+		[ -n "$chan_5" ] && procd_append_param command --channel-5 "$chan_5"
+		[ -n "$chan_6" ] && procd_append_param command --channel-6 "$chan_6"
+		[ -n "$chan_7" ] && procd_append_param command --channel-7 "$chan_7"
+		[ -n "$chan_8" ] && procd_append_param command --channel-8 "$chan_8"
+	fi
+
+	# 告警
+	[ "$tempAlert" -eq 1 ] && procd_append_param command --temp-alert --temp-alert-sensor "$tempAlertSensor"
+	[ "$alertWan" -eq 1 ] && procd_append_param command --alert-wan
+	[ "$alertNewdev" -eq 1 ] && procd_append_param command --alert-newdev
+	[ "$alertIp" -eq 1 ] && procd_append_param command --alert-ip
+	[ "$controlPort" != "0" ] && [ -n "$controlPort" ] && procd_append_param command --control-port "$controlPort"
+
+	# MQTT
+	[ -n "$mqttBroker" ] && {
+		procd_append_param command --mqtt-broker "$mqttBroker"
+		[ -n "$mqttTopic" ] && procd_append_param command --mqtt-topic "$mqttTopic"
+		[ -n "$mqttUser" ] && procd_append_param command --mqtt-user "$mqttUser"
+		[ -n "$mqttPass" ] && procd_append_param command --mqtt-pass "$mqttPass"
+	}
+
+	# LED 独立开关
+	[ "$disableLedClock" -eq 1 ] && procd_append_param command --disable-led-clock
+	[ "$disableLedMedal" -eq 1 ] && procd_append_param command --disable-led-medal
+	[ "$disableLedUp" -eq 1 ] && procd_append_param command --disable-led-up
+	[ "$disableLedDown" -eq 1 ] && procd_append_param command --disable-led-down
+
+	procd_set_param respawn
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+
+	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger "athena_led"
+}
