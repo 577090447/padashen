@@ -1,0 +1,13 @@
+
+config gecoosac 'config'
+	option enabled '1'
+	option port '60650'
+	option isonlyoneprot '1'
+	option upload_dir '/tmp/gecoosac/upload'
+	option db_dir '/etc/gecoosac'
+	option piddir '/var/run'
+	option lang 'zh'
+	option debug '0'
+	option showtip '0'
+	option log '0'
+
