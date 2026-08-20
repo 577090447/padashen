@@ -33,6 +33,10 @@ git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac package/luci
 rm -rf package/luci-app-harbor-file
 git clone --depth=1 https://github.com/destan19/luci-app-harbor-file package/luci-app-harbor-file
 
+# tcpdump 抓包插件
+rm -rf package/luci-app-tcpdump
+git clone --depth=1 https://github.com/KFERMercer/luci-app-tcpdump.git package/luci-app-tcpdump
+
 # 更新并安装插件源
 ./scripts/feeds update -a
 ./scripts/feeds install -a
